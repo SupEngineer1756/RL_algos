@@ -83,7 +83,7 @@ def VI(P,R,gamma):
     while Delta<=0:
         V_=[0 for i in range(M)]
         for x in range(M):
-            V_[x]=max([sum([P[x][Nextstate(x,a,d)][a]*(R[x][a]+gamma*V[x]) for d in range(M)]) for a in range(M)])
+            V_[x]=max([sum([P[x][Nextstate(x,a,d)][a]*(R[x][a]+gamma*V[Nextstate(x,a,d)]) for d in range(1,M)]) for a in range(M)])
             Delta=max(Delta,abs(V[x]-V_[x]))
         V=V_
     return V
@@ -92,23 +92,37 @@ def VI(P,R,gamma):
 #### Policy iteration ####
 
 def PI(P,R,gamma):
-    V=[0 for i in range(M)]
-    global Delta
-    while Delta<=0:
-        V_=[0 for i in range(M)]
+    ### Policy evaluation ###
+    pi_old=[0 for x in range(M)]
+    V_pi=[0 for x in range(M)]
+    pi_=[1 for x in range(M)]
+    while (np.all(np.asarray(pi_) != np.asarray(pi_old))):
+        for x in range(len(pi_old)):
+            pi_old[x]=pi_[x]
+        Delta=0
+        while Delta<=0:
+            V_pi_=[0 for x in range(M)]
+            for x in range(M):
+                V_pi_[x]=sum([P[x][int(Nextstate(x,pi_old[x],d))][pi_[x]]*(R[x][pi_old[x]]+gamma*V_pi[int(Nextstate(x,pi_old[x],d))]) for d in range(1,M)])
+                Delta=max(Delta,abs(V_pi[x]-V_pi_[x]))
+            V_pi=V_pi_
+        print("Delta done")
+        ### Policy improvement ###
+        Q_pi=[[0 for a in range(M)] for x in range(M)]
         for x in range(M):
-            V_[x+1]=max([sum([P[x+1][1+Nextstate(x,a,d)][a+1]*(R[1+x][1+a]+gamma*V[x+1]) for d in range(M)]) for a in range(M)])
-            Delta=max(Delta,abs(V[x+1]-V_[x+1]))
-        V=V_
-    return V
+            for a in range(M):
+                Q_pi[x][a]=sum([P[x][int(Nextstate(x,a,d))][a]*(R[x][pi_old[x]]+gamma*V_pi[int(Nextstate(x,a,d))]) for d in range(1,M)]) 
+            pi_[x]=np.argmax(Q_pi[x])
+        iter+=1
+    return pi_
 
 #### policy ####
-pi=2*np.ones(M+1)
-
+pi=2*np.ones(M)
+V_pi=[0 for x in range(M)]
 #### simulation ####
 x0=M
 n=1000
-'''
+
 [X,R] = trajectory(n,x0,pi,M,K,h,c,p,D)
 
 G_t_=[np.power(gamma, i)*R[i+1] for i in range(len(R)-1)]
@@ -129,11 +143,13 @@ print("Monte carlo estimation of the value function:", MC_V/MC_N)
 
 
 
+#### PI and VI ####
 
-'''
 
 [P,R]=MDP(D,M)
 print("V=", VI(P,R,gamma))
+print("pi=", PI(P,R,gamma))
+
 #plt.plot(np.arange(0,len(R)), R)
 #plt.plot(np.arange(0,len(G_t)), G_t)
 
